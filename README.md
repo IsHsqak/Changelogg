@@ -1,4 +1,4 @@
-# Changelogg
+# Changelog
 
 Ändringslogg för PLC-ändringar i maskiner. Webbapp som körs i webbläsaren (Microsoft Edge eller Chrome på PC) och sparar all data som filer i en delad mapp i ett SharePoint-bibliotek, synkat med OneDrive. Inga data lämnar Microsoft 365 och appen gör inga externa anrop.
 

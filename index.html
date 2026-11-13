@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ändringslogg PLC</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="wrap">
+<div class="topbar">
+  <h1>Ändringslogg PLC</h1>
+  <nav class="tabs" aria-label="Vyer">
+    <button type="button" data-view="andringar">Ändringar</button>
+    <button type="button" data-view="ny">Ny / redigera</button>
+    <button type="button" data-view="processer">Processer</button>
+    <button type="button" data-view="import">Importera</button>
+    <button type="button" data-view="tech">Tech Foundation</button>
+  </nav>
+  <span class="who"><span id="who"></span><br><span id="sync"></span></span>
+</div>
+<div class="callout" id="banner" hidden></div>
+<div id="lb" hidden><img alt="Förstorad bild" id="lbImg"></div>
+
+<!-- ============ ÄNDRINGAR (lista + uppföljning) ============ -->
+<main id="v-setup" class="stack" hidden>
+  <section class="card">
+    <h2>Välj datamapp</h2>
+    <p>Programmet sparar alla ändringar som filer i en mapp. Välj den delade mappen i ert SharePoint-bibliotek, synkad med OneDrive. Alla i teamet väljer samma mapp.</p>
+    <ol class="hint">
+      <li>Öppna SharePoint-biblioteket i webbläsaren och välj Synkronisera, så att mappen finns på din PC.</li>
+      <li>Tryck Välj datamapp nedan och peka ut mappen i OneDrive-katalogen.</li>
+      <li>Tillåt att webbläsaren får ändra filerna i mappen när den frågar.</li>
+    </ol>
+    <div class="callout" id="setupUnsupported" hidden><p>Den här webbläsaren stöder inte filåtkomst. Använd Microsoft Edge eller Chrome på en PC.</p></div>
+    <div class="row">
+      <button type="button" class="primary" id="setupPick">Välj datamapp</button>
+      <button type="button" id="setupResume" hidden>Fortsätt</button>
+      <span class="status" id="setup_msg" role="status"></span>
+    </div>
+  </section>
+</main>
+
+<main id="v-andringar" class="stack">
+  <div class="callout" id="conflictBox" hidden></div>
+  <div class="chips" id="chips" role="group" aria-label="Uppföljning"></div>
+  <section class="card">
+    <div class="filters">
+      <label class="wide">Sök<input type="text" id="f_q" placeholder="ID, process, block, beskrivning …"></label>
+      <label>Fabrik<select id="f_fabrik"><option value="">Alla</option><option>Chain</option><option>Bars</option></select></label>
+      <label>Process<select id="f_proc"><option value="">Alla</option></select></label>
+      <label>Ansvarig<select id="f_ans"><option value="">Alla</option></select></label>
+      <label>Status<select id="f_status"><option value="">Alla</option></select></label>
+    </div>
+    <div class="row">
+      <button type="button" class="primary" id="goNew">Ny ändring</button>
+      <button type="button" id="exportCsv">Exportera CSV</button>
+      <span class="status" id="listMsg" role="status"></span>
+      <span class="hint" id="listCount"></span>
+    </div>
+    <div class="tblwrap"><table class="list" id="tbl" aria-label="Ändringar"></table></div>
+  </section>
+</main>
+
+<!-- ============ VISA ÄNDRING (skrivskyddad) ============ -->
+<main id="v-visa" class="stack" hidden>
+  <section class="card">
+    <div class="row">
+      <h2 style="flex:1 1 auto"><span id="dTitle">Ändring</span> <span id="dStatus"></span></h2>
+      <button type="button" id="dBack">Till listan</button>
+      <button type="button" class="primary" id="dEdit">Redigera</button>
+    </div>
+    <p class="hint" id="dMeta"></p>
+    <div class="callout" id="dWarn" hidden></div>
+  </section>
+  <div class="cols">
+    <div class="stack" id="detail"></div>
+    <aside class="stack">
+      <section class="card">
+        <h2>Historik</h2>
+        <ul class="hist" id="dhist"><li class="hint">Laddar historik …</li></ul>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<!-- ============ NY / REDIGERA ============ -->
+<main id="v-ny" hidden>
+<div class="cols">
+<div class="stack">
+
+<section class="card process" aria-labelledby="h-proc">
+  <h2 id="h-proc"><span id="formTitle">Ny ändring</span></h2>
+  <div class="row">
+    <label>Process
+      <select id="procSel"></select>
+    </label>
+    <button type="button" id="applyProc">Fyll i från process</button>
+    <button type="button" id="newChange">Ny ändring, behåll process</button>
+  </div>
+  <p class="hint">Processen fyller i fabrik, maskin, PLC‑plattform och verifierare. Avsnitt 2 fylls aldrig i automatiskt.</p>
+</section>
+
+<section class="card" aria-labelledby="h1">
+  <h2 id="h1"><span class="n">1</span>Allmän information</h2>
+  <div class="grid2">
+    <label>Ändrings‑ID<input type="text" id="id" readonly placeholder="Tilldelas när du sparar"></label>
+    <label>Datum<input type="date" id="datum"></label>
+    <label>Ansvarig (fullständigt namn)<input type="text" id="ansvarig" autocomplete="name"></label>
+    <label>Initialer (till översikten)<input type="text" id="initialer" placeholder="t.ex. IL"></label>
+    <label>Fabrik<select id="fabrik"><option value=""></option><option>Chain</option><option>Bars</option></select></label>
+    <label>Maskin<input type="text" id="maskin"></label>
+    <label>PLC‑plattform<input type="text" id="plc"></label>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h2">
+  <h2 id="h2"><span class="n">2</span>Påverkade komponenter</h2>
+  <div class="grid2">
+    <label>Programblock<textarea id="progblock" placeholder="t.ex. FC124, FB20"></textarea></label>
+    <label>Datablocker<textarea id="datablock" placeholder="t.ex. DB13, DB10"></textarea></label>
+    <label>HMI‑sidor eller taggar<textarea id="hmi"></textarea></label>
+    <label>Säkerhetslogik (F‑PLC)<textarea id="fplc"></textarea></label>
+    <label>Kommunikationsmoduler / nätverk<textarea id="komm"></textarea></label>
+    <label>Övrigt<textarea id="ovrigt"></textarea></label>
+  </div>
+  <p class="hint">Lämna tomt det som inte berörs. Tomma rader kommer inte med i texten.</p>
+</section>
+
+<section class="card" aria-labelledby="h3">
+  <h2 id="h3"><span class="n">3</span>Beskrivning av ändringen och anledning</h2>
+  <label>Vad ändrades och var i programmet ligger ändringen?
+    <textarea id="beskrivning" style="min-height:96px"></textarea>
+  </label>
+  <label>Varför gjordes ändringen (orsak)?
+    <textarea id="orsak"></textarea>
+  </label>
+  <div class="checks" id="motiv" role="group" aria-label="Motivering">
+    <label class="chk"><input type="checkbox" value="Buggfix"> Buggfix</label>
+    <label class="chk"><input type="checkbox" value="Optimering"> Optimering</label>
+    <label class="chk"><input type="checkbox" value="Ny funktion"> Ny funktion</label>
+    <label class="chk"><input type="checkbox" value="Produktionsförbättring"> Produktionsförbättring</label>
+    <label class="chk"><input type="checkbox" value="Säkerhetskrav"> Säkerhetskrav</label>
+    <label class="chk"><input type="checkbox" value="Kvalitetskrav"> Kvalitetskrav</label>
+  </div>
+  <label>Annat<input type="text" id="annat" placeholder="Egen motivering"></label>
+  <div class="stack" id="imgBox">
+    <h2>Bilder</h2>
+    <div class="row">
+      <label class="chk" id="imgPick"><input type="file" id="imgFile" accept="image/*" multiple hidden> Välj bilder</label>
+      <div class="drop" id="imgDrop" tabindex="0" role="button" aria-label="Klistra in eller släpp skärmdump här">Klicka här och klistra in en skärmdump (Ctrl+V), eller släpp bilder här</div>
+    </div>
+    <div class="gallery" id="imgList"></div>
+    <p class="hint" id="imgMeta"></p>
+    <span class="status" id="img_msg" role="status"></span>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h4">
+  <h2 id="h4"><span class="n">4</span>Risk‑ och konsekvensanalys</h2>
+  <div class="grid2">
+    <label>Säkerhetspåverkan
+      <select id="saf"><option>Nej</option><option>Ja</option><option>Ej bedömd</option></select>
+    </label>
+    <label>Kvalitépåverkan
+      <select id="kval"><option>Nej</option><option>Ja</option><option>Ej bedömd</option></select>
+    </label>
+    <label>Motivering, säkerhet<textarea id="saf_txt"></textarea></label>
+    <label>Motivering, kvalité<textarea id="kval_txt"></textarea></label>
+  </div>
+  <label class="chk" id="qrow" hidden><input type="checkbox" id="qsync"> Ändringen kan påverka slutkund och är synkad med Q</label>
+  <div class="callout" id="riskNote" hidden></div>
+</section>
+
+<section class="card" aria-labelledby="h5">
+  <h2 id="h5"><span class="n">5</span>Testning och validering <span class="badge" id="testBadge" hidden>Krävs</span></h2>
+  <div class="grid2">
+    <label>Simulering genomförd
+      <select id="sim"><option value="">Ej angiven</option><option>Ja</option><option>Nej</option><option>Ej aktuellt</option></select>
+    </label>
+    <label>Maskintest genomförd
+      <select id="mtest"><option value="">Ej angiven</option><option>Ja</option><option>Nej</option><option>Ej aktuellt</option></select>
+    </label>
+  </div>
+  <label>Teststeg<textarea id="teststeg" placeholder="1. …&#10;2. …"></textarea></label>
+  <label>Resultat<textarea id="resultat"></textarea></label>
+</section>
+
+<section class="card" aria-labelledby="h6">
+  <h2 id="h6"><span class="n">6</span>Backup‑referenser</h2>
+  <div class="grid2">
+    <label>Backup före ändring<input type="text" id="bak_fore" placeholder="Filnamn eller hel sökväg"></label>
+    <label>Backup efter ändring<input type="text" id="bak_efter" placeholder="Filnamn eller hel sökväg"></label>
+  </div>
+  <div class="row">
+    <button type="button" id="copyFolder">Kopiera sökvägen till backupmappen</button>
+    <span class="status" id="folderMsg" role="status"></span>
+  </div>
+  <p class="hint">Klistra in backupmappens sökväg i Utforskarens adressfält, markera filen och välj Kopiera som sökväg (Shift + högerklick). Klistra in här. Skriver du bara filnamnet läggs backupmappen (se fliken Processer) till framför.</p>
+</section>
+
+<section class="card" aria-labelledby="h7">
+  <h2 id="h7"><span class="n">7</span>Godkännande</h2>
+  <div class="grid2">
+    <label>Verifierad av<input type="text" id="verifierad"></label>
+    <label>Status
+      <select id="status"><option>Utkast</option><option>Under test</option><option>Väntar på godkännande</option><option>Godkänd</option><option>Avslagen</option><option>Makulerad</option></select>
+    </label>
+  </div>
+  <label>Kommentarer<textarea id="kommentar"></textarea></label>
+</section>
+
+<section class="card ov" aria-labelledby="h8">
+  <h2 id="h8"><span class="n">Ö</span>Översiktsrad</h2>
+  <p class="hint">Fylls i automatiskt från avsnitten ovan (blå fält), kortat till en rad. Skriv över fälten själv om du vill korta eller ändra.</p>
+  <div class="grid2">
+    <label>Påverkat program/block<textarea id="ov_block"></textarea></label>
+    <label>Beskrivning<textarea id="ov_besk"></textarea></label>
+    <label>Orsak<textarea id="ov_orsak"></textarea></label>
+    <label>Kommentar<textarea id="ov_komm"></textarea></label>
+    <label>Verifierad av<input type="text" id="ov_verif"></label>
+    <label>Godkännande<input type="text" id="ov_godk" placeholder="Fylls i vid godkännande"></label>
+  </div>
+  <div class="row">
+    <button type="button" id="ovReset">Återställ översikten till automatiskt</button>
+    <span class="status" id="sumMsg" role="status"></span>
+  </div>
+</section>
+
+<section class="card">
+  <div class="callout" id="formMsg" hidden></div>
+  <div class="row">
+    <button type="button" class="primary" id="saveBtn">Spara ändring</button>
+    <button type="button" id="cancelBtn">Till listan</button>
+    <span class="status" id="saveMsg" role="status"></span>
+  </div>
+</section>
+
+</div>
+
+<aside class="preview" aria-label="Färdig text och historik">
+  <section class="card">
+    <h2>Historik</h2>
+    <ul class="hist" id="hist"><li class="hint">Historiken visas när ändringen är sparad.</li></ul>
+  </section>
+  <section class="card">
+    <h2>Ändringstext</h2>
+    <div class="row">
+      <button type="button" id="copy">Kopiera ändringstext</button>
+      <span class="status" id="copyMsg" role="status"></span>
+    </div>
+    <div id="out" class="rich" tabindex="0"></div>
+  </section>
+  <section class="card">
+    <h2>Översikt</h2>
+    <div class="row">
+      <button type="button" id="copyOv">Kopiera översiktsrad</button>
+      <span class="status" id="copyOvMsg" role="status"></span>
+    </div>
+    <div class="tblwrap"><table id="ovTable" aria-label="Förhandsvisning av översiktsrad"></table></div>
+  </section>
+</aside>
+</div>
+</main>
+
+<!-- ============ TECH FOUNDATION (loggbok) ============ -->
+<main id="v-tech" class="stack" hidden>
+  <section class="card">
+    <div class="row" style="align-items:center">
+      <h2 style="flex:1 1 auto">Tech Foundation</h2>
+      <label style="flex:0 1 240px">Sök i loggboken<input type="text" id="t_q"></label>
+      <button type="button" class="primary" id="techNew">Ny anteckning</button>
+    </div>
+    <p class="hint">Loggbok över vad som händer kring Tech Foundation. Ny anteckning skapar en rubrik med dagens datum. Finns det redan en anteckning för i dag öppnas den, så att du fyller på under samma rubrik.</p>
+    <details id="tfImp">
+      <summary>Importera text från OneNote</summary>
+      <div class="stack" style="margin-top:12px">
+        <p class="hint">Kopiera all text från OneNote-sidan och klistra in här. Varje rad som bara består av ett datum (ÅÅÅÅ-MM-DD) blir en rubrik, och texten under den blir anteckningen. Text före första datumet, till exempel sidans titel, importeras inte. Anteckningar som redan finns med samma datum och text hoppas över.</p>
+        <label>Klistra in text<textarea id="tf_paste" style="min-height:140px"></textarea></label>
+        <p class="hint" id="tf_sum"></p>
+        <div class="row">
+          <button type="button" class="primary" id="tf_go" disabled>Importera</button>
+          <span class="status" id="tf_msg" role="status"></span>
+        </div>
+      </div>
+    </details>
+  </section>
+  <div class="stack" id="techList"></div>
+</main>
+
+<!-- ============ IMPORTERA ============ -->
+<main id="v-import" class="stack" hidden>
+  <section class="card">
+    <h2>Importera från OneNote</h2>
+    <p class="hint">1. Markera översiktstabellen i OneNote, gärna med rubrikraden, och kopiera (Ctrl+C). 2. Klicka i rutan nedan och klistra in (Ctrl+V). 3. Kontrollera att kolumnerna är rätt kopplade och tryck Importera. Skärmdumpar följer inte med.</p>
+    <label>Klistra in här
+      <textarea id="imp_paste" style="min-height:90px" placeholder="Klistra in tabellen här (Ctrl+V)"></textarea>
+    </label>
+    <div class="grid2">
+      <label>Om ändrings-ID redan finns
+        <select id="imp_dup"><option value="skip">Hoppa över raden</option><option value="over">Skriv över den befintliga</option></select>
+      </label>
+      <label>Status på importerade rader
+        <select id="imp_stat"><option>Godkänd</option><option>Utkast</option><option>Under test</option><option>Väntar på godkännande</option></select>
+      </label>
+    </div>
+    <p class="hint">Rader som saknar ID får nästa lediga nummer i den ordning de ligger. Raden får status Godkänd om kolumnen Godkännande är ifylld, annars den status du väljer ovan. Säkerhets- och kvalitépåverkan sätts till Ej bedömd, eftersom tabellen inte innehåller den uppgiften.</p>
+    <div class="row">
+      <button type="button" class="primary" id="imp_go" disabled>Importera</button>
+      <button type="button" id="imp_clear">Rensa</button>
+      <span class="status" id="imp_msg" role="status"></span>
+    </div>
+  </section>
+  <section class="card" id="imp_card" hidden>
+    <h2>Kontrollera innan import</h2>
+    <p class="hint" id="imp_sum"></p>
+    <div class="tblwrap"><table class="list" id="imp_prev" aria-label="Förhandsvisning av import"></table></div>
+  </section>
+</main>
+
+<!-- ============ PROCESSER ============ -->
+<main id="v-processer" class="stack" hidden>
+  <section class="card">
+    <h2>Processer</h2>
+    <p class="hint">Gemensam lista för alla användare. Fabrik, maskin, PLC‑plattform och verifierare fylls i när någon väljer processen i en ny ändring. Gamla ändringar påverkas inte av ändringar här.</p>
+    <div class="tblwrap"><table class="list" id="procTbl" aria-label="Processer"></table></div>
+    
+  </section>
+  <section class="card">
+    <h2 id="pEditTitle">Ny process</h2>
+    <div class="grid2">
+      <label>Namn<input type="text" id="p_name"></label>
+      <label>Fabrik<select id="p_fabrik"><option value=""></option><option>Chain</option><option>Bars</option></select></label>
+      <label>Maskin<input type="text" id="p_maskin"></label>
+      <label>PLC‑plattform<input type="text" id="p_plc"></label>
+      <label>Verifierad av (standard)<input type="text" id="p_verifierad"></label>
+    </div>
+    <div class="row">
+      <button type="button" class="primary" id="saveProc">Spara process</button>
+      <button type="button" id="newProc">Ny process</button>
+      <button type="button" class="danger" id="delProc" hidden>Ta bort process</button>
+      <span class="status" id="procMsg" role="status"></span>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Inställningar och säkerhetskopia</h2>
+    <label>Backupmapp (gemensam)<input type="text" id="s_bak"></label>
+    <div class="row"><button type="button" class="primary" id="saveSet">Spara inställning</button><span class="status" id="setMsg" role="status"></span></div>
+    <p class="hint">En säkerhetskopia av alla ändringar, processer och loggboksanteckningar sparas automatiskt en gång per dag i mappen backup. Du kan skapa en när som helst. Äldre kopior tas inte bort automatiskt.</p>
+    <div class="row"><button type="button" id="backupNow">Skapa säkerhetskopia nu</button><button type="button" id="changeFolder">Byt datamapp</button><span class="status" id="backupMsg" role="status"></span></div>
+  </section>
+</main>
+</div>
+<script src="js/storage.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

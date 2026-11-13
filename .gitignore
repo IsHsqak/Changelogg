@@ -1,0 +1,6 @@
+# Data hör hemma i SharePoint, aldrig i repot
+Data/
+data/
+backup/
+images/
+*.zip
